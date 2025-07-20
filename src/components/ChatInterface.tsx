@@ -5,7 +5,7 @@ import { ChatSidebar } from './ChatSidebar';
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Crown, Loader } from 'lucide-react';
+import { Crown, Loader, AlertCircle } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 
 export const ChatInterface = () => {
@@ -13,6 +13,7 @@ export const ChatInterface = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -74,6 +75,7 @@ export const ChatInterface = () => {
     if (!user || !currentSessionId) return;
 
     setLoading(true);
+    setError(null);
 
     try {
       // First, add user message to Supabase
@@ -99,7 +101,7 @@ export const ChatInterface = () => {
         session_id: currentSessionId
       };
 
-      const response = await fetch('https://your-cloud-run-domain/api/pydantic-github-agent', {
+      const response = await fetch('https://your-cloud-run-domain.run.app/api/pydantic-github-agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,9 +114,18 @@ export const ChatInterface = () => {
       }
 
       // Agent response will come via real-time subscription
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending message:', error);
       setLoading(false);
+      
+      // Show user-friendly error message
+      if (error.message.includes('Failed to fetch')) {
+        setError('Unable to connect to AI service. Please check your internet connection.');
+      } else if (error.message.includes('cloud-run-domain')) {
+        setError('AI service not configured. Please update the API endpoint.');
+      } else {
+        setError('Something went wrong. Please try again.');
+      }
     }
   };
 
@@ -193,6 +204,18 @@ export const ChatInterface = () => {
                     <div className="flex items-center space-x-2 text-muted-foreground">
                       <Loader className="w-4 h-4 animate-spin" />
                       <span>Analyzing your request...</span>
+                    </div>
+                    </div>
+                  )}
+                {error && (
+                  <div className="flex gap-4 p-4">
+                    <div className="w-8 h-8 bg-destructive rounded-full flex items-center justify-center">
+                      <AlertCircle className="w-4 h-4 text-destructive-foreground" />
+                    </div>
+                    <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 flex-1">
+                      <div className="flex items-center space-x-2 text-destructive text-sm">
+                        <span>{error}</span>
+                      </div>
                     </div>
                   </div>
                 )}
